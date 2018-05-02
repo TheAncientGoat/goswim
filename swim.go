@@ -39,24 +39,14 @@ func listen(ln net.Listener) {
 }
 
 func setupPinger(port string) {
-	// pingtime := time.Now()
-	// pung := false
 	for {
 		time.Sleep(1000 * time.Millisecond)
-		// if pung && time.Now().Unix() > pingtime.Add(1000).Unix() {
-
-		// 	pung = false
-		// 	pingtime = time.Now()
-		// }
-		// if !pung {
 		con, err := net.Dial("tcp", "localhost:"+port)
 		if err != nil {
 			log.Print("Couldn't dial", err)
 		} else {
 			go ping(con)
 		}
-		// pung = true
-		// }
 	}
 }
 
@@ -64,7 +54,6 @@ func main() {
 	port := os.Args[1]
 	var nodes [1]Server
 	addr := net.IPAddr{IP: net.IP("0.0.0.0:" + port)}
-	//addr, err := net.ResolveIPAddr("ip", "localhost:6969")
 	nodes[0] = Server{addr, 123, 1000}
 
 	ln, err := net.Listen("tcp", ":"+os.Args[2])
