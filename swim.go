@@ -6,6 +6,7 @@ import "os"
 import "log"
 import "time"
 import "strconv"
+import "container/list"
 
 func handleConnection(conn net.Conn) {
 	var out []byte
@@ -26,18 +27,23 @@ func handleConnection(conn net.Conn) {
 			log.Print("Cannot parse", e)
 		}
 		log.Print("port is joining" + portStr)
-		nodes[lastnode] = Server{"0.0.0.0", int(p), 1000}
-		lastnode += 1
-		for _, i := range nodes {
-			log.Print(i.port)
-		}
+		nodeList.PushBack(Server{"0.0.0.0", int(p), 1000})
 	}
 	conn.Close()
 }
 
+func serializeNodes(elem *list.Element, hostsString string) string {
+	server := elem.Value.(Server)
+	hostsString = hostsString + ";" + server.ip + ":" + strconv.Itoa(server.port)
+	if elem.Next() != nil {
+		return serializeNodes(elem.Next(), hostsString)
+	}
+	return hostsString
+}
+
 func ping(con net.Conn) {
 	log.Print("pinging")
-	con.Write([]byte("PING"))
+	con.Write([]byte("PING" + serializeNodes(nodeList.Front(), "")))
 	con.Close()
 }
 
@@ -66,33 +72,43 @@ func listen(ln net.Listener) {
 	go handleConnection(conn)
 }
 
+func pingOverList(elem *list.Element) {
+	var node Server
+	node = elem.Value.(Server)
+	if node.health > 0 {
+		con, err := net.Dial("tcp", "localhost:"+strconv.Itoa(node.port))
+		if err != nil {
+			log.Print("Couldn't dial", err, node.health)
+			node.health -= 1
+		} else {
+			go ping(con)
+		}
+	}
+	if elem.Next() != nil {
+		pingOverList(elem.Next())
+	}
+}
+
 func setupPinger(port string) {
 	for {
 		time.Sleep(10000 * time.Millisecond)
-		for _, node := range nodes {
-			if node.port > 0 {
-				con, err := net.Dial("tcp", "localhost:"+strconv.Itoa(node.port))
-				if err != nil {
-					log.Print("Couldn't dial", err)
-				} else {
-					go ping(con)
-				}
-			}
-		}
+		pingOverList(nodeList.Front())
 	}
 }
+
+var nodeList list.List
 
 var nodes [100]Server
 var lastnode int
 
 func main() {
+	nodeList.Init()
 	port := os.Args[1]
 	peerPort, e := strconv.ParseInt(os.Args[2], 10, 64)
 	if e != nil {
 		// handle
 	}
-	nodes[0] = Server{"0.0.0.0", int(peerPort), 1000}
-	lastnode = 0
+	nodeList.PushBack(Server{"0.0.0.0", int(peerPort), 1000})
 
 	ln, err := net.Listen("tcp", ":"+os.Args[2])
 	if err != nil {
