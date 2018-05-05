@@ -210,7 +210,7 @@ var lastnode int
 
 func main() {
 
-	var peerIp = flag.String("peerIp", "0.0.0.0", "IP of server")
+	var peerIp = flag.String("peerIp", "0.0.0.0", "IP of server to connect to")
 	var peerPort = flag.Int("peerPort", 6969, "Port of the initial peer to connect to")
 	var port = flag.Int("port", 6969, "Port to listen on")
 	var ip = flag.String("ip", "0.0.0.0", "IP of server")
